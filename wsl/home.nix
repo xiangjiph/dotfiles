@@ -1,7 +1,7 @@
 { pkgs, user, homeDirectory, ... }:
 
 {
-  imports = [ ../shared/home/editor.nix ../shared/home/zsh.nix ];
+  imports = [ ../shared/home/files.nix ../shared/home/editor.nix ../shared/home/zsh.nix ];
 
   home.username = user;
   home.homeDirectory = homeDirectory;

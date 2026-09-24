@@ -1,0 +1,6 @@
+shared/nvim	.config/nvim
+shared/herdr	.config/herdr
+shared/claude/settings.json	.claude/settings.json
+shared/agents/AGENTS.md	.claude/CLAUDE.md
+shared/agents/AGENTS.md	.codex/AGENTS.md
+shared/agents/AGENTS.md	.config/opencode/AGENTS.md

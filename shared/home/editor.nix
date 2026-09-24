@@ -1,11 +1,7 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
-let
-  dotfiles = "${config.home.homeDirectory}/.dotfiles";
-in
 {
-  home.packages = [ pkgs.neovim ];
+  # Git is needed by lazy.nvim and the shared editor's Git plugins.
+  home.packages = [ pkgs.neovim pkgs.git ];
   home.sessionVariables.EDITOR = "nvim";
-  home.file.".config/nvim".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/shared/nvim";
 }

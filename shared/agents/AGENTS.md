@@ -1,0 +1,3 @@
+- When writing commit messages, NEVER auto-add your agent name as co-author
+- When making technical decisions, do not give much weight to development cost. Instead, prefer quality, simplicity, clarity, robustness, scalability, and long term maintainability.
+- When something is clearly off, even if it's not directly related to your current work, try to fix it as well.

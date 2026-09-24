@@ -5,12 +5,9 @@ repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-smoke.XXXXXX")"
 trap 'rm -rf -- "$scratch"' EXIT
 
-if "$repo/bootstrap.sh" >"$scratch/dispatch.out" 2>&1; then
-  echo "Linux dispatch accepted a missing profile." >&2
-  exit 1
-fi
-if "$repo/bootstrap.sh" mac >"$scratch/dispatch.out" 2>&1; then
-  echo "Linux dispatch accepted the Mac profile." >&2
+# Never dispatch a valid setup on the host running this test.
+if "$repo/bootstrap.sh" invalid-profile >"$scratch/dispatch.out" 2>&1; then
+  echo "Dispatch accepted an invalid profile." >&2
   exit 1
 fi
 
@@ -20,9 +17,24 @@ bash "$repo/shared/scripts/link-repo.sh" "$repo"
 bash "$repo/shared/scripts/link-repo.sh" "$repo"
 [[ "$(readlink "$HOME/.dotfiles")" == "$repo" ]]
 
-bash "$repo/shared/scripts/link-file.sh" "$repo/shared/nvim" "$HOME/.config/nvim"
-bash "$repo/shared/scripts/link-file.sh" "$repo/shared/nvim" "$HOME/.config/nvim"
-[[ "$(readlink "$HOME/.config/nvim")" == "$repo/shared/nvim" ]]
+# A conflict late in the manifest must prevent all config links.
+mkdir -p "$HOME/.config/opencode"
+printf '%s\n' 'preserve me' > "$HOME/.config/opencode/AGENTS.md"
+if bash "$repo/shared/scripts/link-shared-config.sh" >"$scratch/conflict.out" 2>&1; then
+  echo "Shared config links accepted an existing user file." >&2
+  exit 1
+fi
+[[ ! -e "$HOME/.config/nvim" ]]
+[[ "$(cat "$HOME/.config/opencode/AGENTS.md")" == 'preserve me' ]]
+mv "$HOME/.config/opencode/AGENTS.md" "$scratch/preserved-AGENTS.md"
+bash "$repo/shared/scripts/link-shared-config.sh" --check
+[[ ! -e "$HOME/.config/nvim" ]]
+bash "$repo/shared/scripts/link-shared-config.sh"
+bash "$repo/shared/scripts/link-shared-config.sh"
+while IFS=$'\t' read -r source_relative target_relative; do
+  [[ "$(readlink "$HOME/$target_relative")" == "$repo/$source_relative" ]]
+  [[ -e "$HOME/$target_relative" ]]
+done < "$repo/shared/config-links.tsv"
 
 bash "$repo/server/ensure-bash-handoff.sh" >"$scratch/handoff.out"
 bash "$repo/server/ensure-bash-handoff.sh" >>"$scratch/handoff.out"

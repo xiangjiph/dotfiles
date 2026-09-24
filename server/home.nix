@@ -4,7 +4,7 @@ let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
 in
 {
-  imports = [ ../shared/home/editor.nix ];
+  imports = [ ../shared/home/files.nix ../shared/home/editor.nix ];
 
   home.username = user;
   home.homeDirectory = homeDirectory;

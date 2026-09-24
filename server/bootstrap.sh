@@ -9,11 +9,11 @@ bash "$DIR/shared/scripts/link-repo.sh" "$DIR"
 case "${1:-}" in
   "")
     bash "$DIR/shared/scripts/link-file.sh" "$DIR/server/zshrc" "$HOME/.zshrc" --check
-    bash "$DIR/shared/scripts/link-file.sh" "$DIR/shared/nvim" "$HOME/.config/nvim" --check
+    bash "$DIR/shared/scripts/link-shared-config.sh" --check
     bash "$DIR/server/ensure-bash-handoff.sh" --check
     bash "$DIR/server/install-zsh.sh"
     bash "$DIR/shared/scripts/link-file.sh" "$DIR/server/zshrc" "$HOME/.zshrc"
-    bash "$DIR/shared/scripts/link-file.sh" "$DIR/shared/nvim" "$HOME/.config/nvim"
+    bash "$DIR/shared/scripts/link-shared-config.sh"
     bash "$DIR/server/ensure-bash-handoff.sh"
     echo "Server setup complete. New interactive Bash sessions will enter Zsh."
     ;;

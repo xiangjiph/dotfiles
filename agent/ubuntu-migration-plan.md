@@ -2,6 +2,14 @@
 
 Date: 2026-09-23. Implemented; see [ARCHITECTURE.md](ARCHITECTURE.md) and the root README for the current layout and commands. This file records the original migration rationale.
 
+## Follow-up: sync the newer original repository
+
+Git history identifies `88a58cb` as the common Mac base and `3a4392d` as the OS expansion. The newer working tree in `../dotfiles` adds portable Neovim plugins/keymaps, Herdr configuration, Claude settings, and personal agent instructions. The repository-wide synchronization keeps these in `shared/` and uses one `shared/config-links.tsv` manifest for Home Manager and the no-Nix server. All profiles use the same editor configuration; no Mac-only loader or duplicate editor tree is needed.
+
+The small, rootless server installation contract remains: config files are linked, applications are not implicitly installed. Neovim plugins require Neovim 0.10+, Git, and network access for initial installation; the base editor/keymaps remain available if Neovim is older, Git is missing, or the lazy.nvim clone fails. Managed profiles include Git alongside Neovim. The Claude status line is portable and quietly skips output without `jq`. Theme transparency follows the reference's Mac/WSL distinction, including Microsoft's WSL kernel names. Existing OS defaults, package ownership, shell behavior, and flake pins retain the expansion's design.
+
+The sections below document the original migration rather than the final file map. Current ownership, prerequisites, and validation commands are in the architecture and README. Synchronization edits and isolated validation do not rebuild or activate any profile.
+
 ## Recommendation
 
 Do **not** install the whole Mac setup on WSL or a server. The Mac configuration manages OS defaults, Homebrew applications, a graphical terminal, fonts, and an interactive shell. WSL is a second development workstation, so its useful overlap is command-line tools, editor settings, and Zsh. A remote server should have a small CLI setup with Zsh installed in user space when necessary. Bash remains installed and usable everywhere. Installing Nix solely for a prompt, Zsh, and editor config on a restricted server is usually not worth the setup and maintenance cost.

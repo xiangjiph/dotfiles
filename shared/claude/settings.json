@@ -1,0 +1,8 @@
+{
+  "theme": "dark",
+  "model": "opus[1m]",
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.dotfiles/shared/claude/statusline-command.sh\""
+  }
+}
