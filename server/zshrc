@@ -1,0 +1,7 @@
+export PATH="$HOME/.local/bin:$PATH"
+if [[ -r "$HOME/.dotfiles/shared/zsh/common.zsh" ]]; then
+  source "$HOME/.dotfiles/shared/zsh/common.zsh"
+fi
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi

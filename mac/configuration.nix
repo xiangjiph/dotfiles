@@ -1,4 +1,4 @@
-{ user, ... }: 
+{ user, ... }:
 
 {
   # Determinate already manages the Nix daemon, so nix-darwin shouldn't. 
