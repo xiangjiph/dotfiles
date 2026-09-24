@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Every external state-changing command in migration tests is intercepted here.
+set -euo pipefail
+root="${MIGRATION_TEST_ROOT:?}"
+mode="${MIGRATION_TEST_MODE:-success}"
+profile=/nix/var/nix/profiles/system
+case "${0##*/}" in
+  uname) echo "${MIGRATION_TEST_OS:-Darwin}" ;;
+  id) echo 501 ;;
+  readlink)
+    if [[ "$1" == "$profile" ]]; then
+      cat "$root/generation"
+    else
+      exec "$MIGRATION_TEST_READLINK" "$@"
+    fi
+    ;;
+  nix)
+    case "$1" in
+      path-info)
+        if [[ "$2" == "$profile" ]]; then
+          cat "$root/current-system"
+        else
+          "$MIGRATION_TEST_READLINK" "$2"
+        fi
+        ;;
+      build)
+        [[ "$2" == --no-write-lock-file && "$3" == --out-link ]]
+        [[ "$5" == "path:$MIGRATION_TEST_REPO#darwinConfigurations.mac.system" ]]
+        [[ "$(cd "$HOME/.dotfiles" && pwd -P)" == "$MIGRATION_TEST_OLD" ]]
+        echo build >> "$root/events"
+        [[ "$mode" != build-fail ]] || exit 17
+        if [[ "$mode" == build-signal ]]; then kill -TERM "$PPID"; exit 17; fi
+        ln -s "$root/new-system" "$4"
+        if [[ "$mode" == changed-link ]]; then
+          unlink "$HOME/.dotfiles"
+          ln -s "$root/other-checkout" "$HOME/.dotfiles"
+        fi
+        if [[ "$mode" == changed-generation ]]; then
+          echo system-99-link > "$root/generation"
+        fi
+        ;;
+      *) exit 90 ;;
+    esac
+    ;;
+  sudo)
+    if [[ "$1" == -v ]]; then
+      [[ "$(cd "$HOME/.dotfiles" && pwd -P)" == "$MIGRATION_TEST_OLD" ]]
+      echo auth >> "$root/events"
+      [[ "$mode" != auth-fail ]] || exit 19
+      exit 0
+    fi
+    if [[ "$1" == -n ]]; then shift; fi
+    exec "$@"
+    ;;
+  nix-env)
+    [[ "$1" == -p && "$2" == "$profile" && "$3" == --set ]]
+    if [[ "$4" == "$root/new-system" ]]; then
+      [[ "$(readlink "$HOME/.dotfiles")" == "$MIGRATION_TEST_REPO" ]]
+      echo set-new >> "$root/events"
+      [[ "$mode" != profile-fail ]] || exit 21
+      echo system-14-link > "$root/generation"
+    else
+      [[ "$4" == "$root/old-system" ]]
+      echo restore-profile >> "$root/events"
+      echo system-15-link > "$root/generation"
+    fi
+    printf '%s\n' "$4" > "$root/current-system"
+    ;;
+  darwin-rebuild)
+    if [[ "$1" == switch ]]; then
+      [[ "$2" == --flake && "$3" == "path:$MIGRATION_TEST_REPO#mac" && $# -eq 3 ]]
+      echo normal-switch >> "$root/events"
+      exit 0
+    fi
+    [[ "$1" == activate && $# -eq 1 ]]
+    [[ "$0" == "$root/new-system/sw/bin/darwin-rebuild" ]]
+    [[ "$(readlink "$HOME/.dotfiles")" == "$MIGRATION_TEST_REPO" ]]
+    echo activate >> "$root/events"
+    case "$mode" in
+      activate-fail) exit 23 ;;
+      signal-*) kill -"${mode#signal-}" "$PPID"; exit 23 ;;
+      changed-link-during-activation)
+        unlink "$HOME/.dotfiles"
+        ln -s "$root/other-checkout" "$HOME/.dotfiles"
+        exit 23
+        ;;
+    esac
+    ;;
+  *) exit 91 ;;
+esac

@@ -6,9 +6,10 @@ This is the authoritative map of the implemented repo. The earlier [migration pl
 
 | Path | Role |
 | --- | --- |
-| `bootstrap.sh`, `rebuild.sh` | Root dispatchers. No argument selects Mac on Darwin; Linux requires `wsl` or `server`. They call matching subfolder scripts. |
+| `bootstrap.sh`, `rebuild.sh` | Root dispatchers. No argument selects Mac on Darwin; Linux requires `wsl` or `server`. Rebuild also accepts Mac `--migrate-from OLD_CHECKOUT`, with or without an explicit `mac` selector. They call matching subfolder scripts. |
 | `flake.nix`, `flake.lock` | One root flake. `darwinConfigurations.mac` is the original Mac output; `homeConfigurations.wsl-*` and `server-*` are standalone Linux Home Manager outputs. Darwin inputs retain their original lock revisions; Linux Nixpkgs/Home Manager inputs are separate. |
 | `mac/` | Mac-specific system and Home Manager modules, WezTerm config, and preserved nix-darwin bootstrap/rebuild implementations. |
+| `mac/migrate.sh` | Explicit Mac checkout migration: validate the old link, build first, journal recovery information, atomically replace the link, select and activate the built system, and restore pointers on failure. |
 | `wsl/` | Ubuntu/WSL standalone Home Manager profile and its bootstrap/rebuild scripts. Installs development CLI, Zsh, and Starship; manages Bash as a fallback. |
 | `server/` | Default no-Nix server setup, pinned user-local Zsh source build, minimal Zsh startup, guarded interactive Bash handoff, and optional Home Manager headless profile. |
 | `shared/nvim/` | One Neovim configuration, plugin lockfile, theme, and keymaps used by all profiles. |
@@ -17,7 +18,7 @@ This is the authoritative map of the implemented repo. The earlier [migration pl
 | `shared/home/` | Reusable Home Manager file links (`files.nix`), editor/Git packages (`editor.nix`), and workstation Zsh/Starship modules. |
 | `shared/zsh/` | Small shared Zsh behavior used by Home Manager and the no-Nix server. |
 | `shared/scripts/` | Safe repository/config link helpers, shared-manifest linker with conflict preflight, and Linux identity/architecture checks. |
-| `tests/` | Isolated link/shell smoke tests, shared editor loading/fallback tests, and Home Manager profile contract checks. No system activation. |
+| `tests/` | Isolated link/shell smoke tests, mocked Mac migration/dispatch/recovery tests, shared editor loading/fallback tests, and Home Manager profile contract checks. No system activation. |
 | `README.md` | Supported user commands, prerequisites, and recovery. |
 
 ## Settings scope
@@ -33,6 +34,7 @@ This is the authoritative map of the implemented repo. The earlier [migration pl
 | Starship and Zsh plugins | Yes | Yes | Only if already installed; plain Zsh works | Plain Zsh by default |
 | ripgrep/fd/fzf/jq | Home Manager | Home Manager | Use server-installed tools | Home Manager |
 | WezTerm, font, Mac defaults, Homebrew apps | Mac only | No | No | No |
+| Explicit checkout migration | `rebuild.sh --migrate-from OLD_CHECKOUT` | No | No | No |
 
 All Home Manager profiles import `shared/home/files.nix` and `shared/home/editor.nix`. The no-Nix server uses `shared/scripts/link-shared-config.sh`, which checks every manifest target before linking any of them. These paths install the same config links: Neovim, Herdr, Claude settings, and `shared/agents/AGENTS.md` as the personal instructions for Claude, Codex, and OpenCode. Home Manager retains its existing backup behavior; the no-Nix path refuses conflicting files or links.
 
@@ -47,6 +49,14 @@ The common base with `../dotfiles` is `88a58cb`; `3a4392d` expanded this reposit
 Validation must not imply activation: syntax checks, temporary-home link tests, and mocked editor/profile tests can run without rebuilding. Full Nix evaluation and real Linux/application runtime checks should be reported separately when performed.
 
 The Linux flake outputs read `USER` and `HOME` during `--impure` evaluation. Linux scripts verify those values against `id -un` and the account home, select x86_64 or aarch64, and pass `--impure`. WSL bootstrap may need sudo once for `/nix` when Nix is absent. The default server path never needs Nix or root, but building Zsh requires a C toolchain and terminal development libraries. The server source release and checksum live in `server/install-zsh.sh`.
+
+## Mac checkout migration
+
+Ordinary bootstrap/rebuild keeps the existing safe refusal to replace a different `~/.dotfiles` link. The user must explicitly run `./rebuild.sh --migrate-from OLD_CHECKOUT` to move an existing Mac installation. The migration validates the old symlink by its canonical directory, saves its exact target and the current system generation, and builds `darwinConfigurations.mac.system` before changing either pointer. Nix's output link in the migration journal retains the built closure. Sudo authentication and a second check of the old link/generation happen before switching.
+
+Migration uses a temporary symlink on the home filesystem and macOS `/bin/mv -fh` for atomic replacement of the link itself. It selects the built closure with `nix-env` and runs that closure's `sw/bin/darwin-rebuild activate`; activation does not re-evaluate or rebuild the flake. An EXIT trap restores the old link and the old profile pointer on failure or HUP/INT/TERM, unless another process changed them independently. It reports the previous activation command for recovery from partially applied settings. This is not transactional rollback of Homebrew or all activation side effects.
+
+`~/.dotfiles-migration.lock` blocks simultaneous migrations and ordinary Mac rebuilds while migration is running. Recovery records live under `~/.local/state/dotfiles/migrations/` and persist after success or failure. Power loss/SIGKILL cannot run the traps; the user must inspect the records, recover state, and remove the stale lock before retrying. Mac bootstrap and Linux deployment behavior are unchanged.
 
 ## Maintenance workflow for future agents
 

@@ -19,6 +19,22 @@ The Mac scripts retain the original Determinate Nix and `darwin-rebuild` workflo
 
 Mac uses the same shared editor and application configs as WSL and server. Mac system defaults, WezTerm, the font, and Homebrew application installation live under `mac/`.
 
+#### Moving from the original checkout
+
+If `~/.dotfiles` still points to the original `../dotfiles` checkout, run this once from the new repository as your normal user:
+
+```sh
+./rebuild.sh --migrate-from ../dotfiles
+```
+
+`./rebuild.sh mac --migrate-from ../dotfiles` and `./mac/rebuild.sh --migrate-from ../dotfiles` are equivalent. The supplied path must match the existing symlink's directory. A real `~/.dotfiles` directory is never replaced. Ordinary rebuilds still refuse to replace a link to another checkout.
+
+Migration builds the new system first, keeping the old checkout active during the build. It records the old link target and system generation under `~/.local/state/dotfiles/migrations/`, retains the new build there, obtains sudo authorization, and checks that neither the link nor the generation changed during the build. It then atomically replaces the link, selects the built system, and activates that exact build without rebuilding. Avoid editing either checkout or starting another system rebuild during migration. Existing application config links may briefly stop resolving between link replacement and activation.
+
+If the switch fails or receives HUP, INT, or TERM, migration restores the old link and, if it changed, the previous system profile pointer. It refuses to overwrite independently changed targets. The error output identifies the recovery record and prints the old system's activation command. Partial activation can leave home links or system settings changed, so reactivating the old system may still be necessary; Homebrew changes are not automatically undone.
+
+After an uncatchable interruption such as power loss or SIGKILL, inspect the latest migration record (`old-link-target`, `old-checkout`, `old-generation`, `old-system`, and `new-system-path`). Restore the recorded link and system profile as appropriate, then use the recorded old system's `sw/bin/darwin-rebuild activate` with sudo if rolling back. Remove the empty `~/.dotfiles-migration.lock` directory only after confirming no migration is still running and resolving its state. Successful migrations also retain their records/build for inspection. Once migrated, use ordinary `./rebuild.sh`.
+
 ### WSL
 
 Run from the Linux filesystem, such as a checkout under `$HOME`, with an account that can use `sudo` once if Nix is absent. Bootstrap installs single-user Nix when needed, then the pinned Home Manager configuration supplies Zsh, Neovim, Git, ripgrep, fd, fzf, jq, tldr, lazygit, and Starship. Existing files that Home Manager takes over receive a timestamped `dotfiles-backup-*` suffix. Open a new terminal after bootstrap.
@@ -43,12 +59,13 @@ Run from the repository root:
 
 ```sh
 bash tests/smoke.sh
+python3 tests/test_migration.py -v
 NVIM_LOG_FILE=/dev/null nvim --headless -u NONE -i NONE -n -l tests/nvim.lua
 nix-instantiate --eval --strict --json tests/profiles.nix
 git diff --check
 ```
 
-The smoke test uses a temporary home and only invalid-profile dispatch; it never calls a valid bootstrap/rebuild path. The editor test mocks plugin loading and network calls. The Nix test checks module wiring with placeholder packages; it does not perform full flake evaluation or a build. These checks do not activate a profile or modify your home configuration.
+The smoke test uses a temporary home and only invalid-profile dispatch. The migration tests run on macOS and use copied scripts, temporary homes, and mocked Nix, sudo, and activation commands; they verify the actual atomic symlink replacement and failure recovery without building or activating a system. The editor test mocks plugin loading and network calls. The Nix test checks module wiring with placeholder packages; it does not perform full flake evaluation or a build. These checks do not activate a profile or modify your home configuration.
 
 ## Changes and recovery
 

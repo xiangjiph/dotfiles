@@ -10,6 +10,8 @@ The small, rootless server installation contract remains: config files are linke
 
 The sections below document the original migration rather than the final file map. Current ownership, prerequisites, and validation commands are in the architecture and README. Synchronization edits and isolated validation do not rebuild or activate any profile.
 
+The implemented Mac transition now includes an explicit `./rebuild.sh --migrate-from OLD_CHECKOUT` path. It builds while the original checkout remains active, journals the old link/generation, then atomically repoints `~/.dotfiles` and activates the exact build. Failure or a catchable interruption restores the old pointers and reports further recovery steps. Ordinary rebuilds continue to refuse unexpected links. This makes migration from the original `home/...` layout explicit; the link switch and activation are not a transactional rollback of all system or Homebrew effects.
+
 ## Recommendation
 
 Do **not** install the whole Mac setup on WSL or a server. The Mac configuration manages OS defaults, Homebrew applications, a graphical terminal, fonts, and an interactive shell. WSL is a second development workstation, so its useful overlap is command-line tools, editor settings, and Zsh. A remote server should have a small CLI setup with Zsh installed in user space when necessary. Bash remains installed and usable everywhere. Installing Nix solely for a prompt, Zsh, and editor config on a restricted server is usually not worth the setup and maintenance cost.
