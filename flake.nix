@@ -20,7 +20,7 @@
 
   outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, home-manager-linux, nixpkgs-linux, ... }:
     let 
-	user = "xiangji";
+	user = "xji";
       mkLinuxHome = system: module: home-manager-linux.lib.homeManagerConfiguration {
         pkgs = nixpkgs-linux.legacyPackages.${system};
         extraSpecialArgs = {
